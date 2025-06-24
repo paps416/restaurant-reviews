@@ -1,7 +1,14 @@
 import pandas as pd
 import os
 from datasets import load_dataset
-from transformers import AutoTokenizer
+from transformers import (
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
+    TrainingArguments,
+    Trainer,
+)
+import numpy as np
+from sklearn.metrics import accuracy_score, f1_score
 
 def create_demo_files_if_not_exist():
     """
@@ -49,6 +56,13 @@ def tokenize_data(dataset, tokenizer):
     print("\nTOKENIZED")
     return tokenized_datasets
 
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+    acc = accuracy_score(labels, predictions)
+    f1 = f1_score(labels, predictions, average="binary")
+    return {"accuracy": acc, "f1": f1}
+
 if __name__ == "__main__":
     create_demo_files_if_not_exist()
 
@@ -60,4 +74,22 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenized_datasets = tokenize_data(raw_datasets, tokenizer)
 
-    print("\nready for training")
+    print("\nstarting fine-tuning")
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
+
+    training_args = TrainingArguments(
+        output_dir="./results",
+        num_train_epochs=3,
+        per_device_train_batch_size=8,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_datasets["train"],
+        eval_dataset=tokenized_datasets["test"],
+        compute_metrics=compute_metrics,
+    )
+
+    trainer.train()
+    print("\ntraining finished.")
