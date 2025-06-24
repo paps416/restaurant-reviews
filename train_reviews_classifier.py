@@ -61,7 +61,7 @@ def compute_metrics(eval_pred):
     predictions = np.argmax(logits, axis=-1)
     acc = accuracy_score(labels, predictions)
     f1 = f1_score(labels, predictions, average="binary")
-    return {"accuracy": acc, "f1": f1}
+    return {"accuracy": acc, "f1": f1} # extra
 
 if __name__ == "__main__":
     create_demo_files_if_not_exist()
