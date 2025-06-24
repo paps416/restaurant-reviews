@@ -6,6 +6,7 @@ from transformers import (
     AutoModelForSequenceClassification,
     TrainingArguments,
     Trainer,
+    pipeline,
 )
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
@@ -61,7 +62,7 @@ def compute_metrics(eval_pred):
     predictions = np.argmax(logits, axis=-1)
     acc = accuracy_score(labels, predictions)
     f1 = f1_score(labels, predictions, average="binary")
-    return {"accuracy": acc, "f1": f1} # extra
+    return {"accuracy": acc, "f1": f1}
 
 if __name__ == "__main__":
     create_demo_files_if_not_exist()
@@ -74,9 +75,9 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenized_datasets = tokenize_data(raw_datasets, tokenizer)
 
-    print("\nstarting fine-tuning")
+    print("\nstarting fine-tuning...")
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
-
+    
     training_args = TrainingArguments(
         output_dir="./results",
         num_train_epochs=3,
@@ -92,4 +93,23 @@ if __name__ == "__main__":
     )
 
     trainer.train()
-    print("\ntraining finished.")
+    print("\ntraining finished")
+
+    # evaulate the model manually
+    print("\nevaluating model on test data")
+    eval_results = trainer.evaluate()
+    
+    print(f"\n**final results on test set**")
+    print(f"accuracy: {eval_results['eval_accuracy']:.4f}")
+    print(f"f1-score: {eval_results['eval_f1']:.4f}")
+
+    print("\ntesting model on new reviews")
+    test_reviews_df = pd.read_csv(TEST_FILE)
+    test_texts = test_reviews_df['text'].tolist()
+    sentiment_pipeline = pipeline("sentiment-analysis", model=trainer.model, tokenizer=tokenizer)
+
+    for i, review in enumerate(test_texts):
+        result = sentiment_pipeline(review)[0]
+        sentiment = "Positive" if result['label'] == 'LABEL_1' else "Negative"
+        print(f"\nreview {i+1}: '{review}'")
+        print(f"-> prediction: {sentiment} (score: {result['score']:.4f})")
