@@ -1,9 +1,11 @@
 import pandas as pd
 import os
+from datasets import load_dataset
+from transformers import AutoTokenizer
 
 def create_demo_files_if_not_exist():
     """
-    check of CSV files and creating them if they do not exist
+    checking CSV files: creating them if they do not exist
     """
     train_file = "reviews_train.csv"
     test_file = "reviews_test.csv"
@@ -34,7 +36,28 @@ def create_demo_files_if_not_exist():
     test_df.to_csv(test_file, index=False)
     print(f"file '{test_file}' is created (10 records)")
 
+def load_and_prepare_data(train_file, test_file):
+    dataset = load_dataset("csv", data_files={"train": train_file, "test": test_file})
+    print("\ndataset loaded:")
+    print(dataset)
+    return dataset
+
+def tokenize_data(dataset, tokenizer):
+    def tokenize_function(examples):
+        return tokenizer(examples["text"], padding="max_length", truncation=True)
+    tokenized_datasets = dataset.map(tokenize_function, batched=True)
+    print("\nTOKENIZED")
+    return tokenized_datasets
 
 if __name__ == "__main__":
     create_demo_files_if_not_exist()
-    print("\nK")
+
+    MODEL_NAME = "distilbert-base-uncased"
+    TRAIN_FILE = "reviews_train.csv"
+    TEST_FILE = "reviews_test.csv"
+
+    raw_datasets = load_and_prepare_data(TRAIN_FILE, TEST_FILE)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    tokenized_datasets = tokenize_data(raw_datasets, tokenizer)
+
+    print("\nready for training")
